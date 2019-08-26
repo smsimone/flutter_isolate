@@ -1,11 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
-import 'package:uuid/uuid.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:uuid/uuid.dart';
 
 class FlutterIsolate {
+  static String get platformVersion {
+    return Platform.operatingSystemVersion;
+  }
+
   /// Control port used to send control messages to the isolate.
   SendPort controlPort;
 
@@ -17,7 +23,7 @@ class FlutterIsolate {
 
   /// Creates and spawns a flutter isolate that shares the same code
   /// as the current isolate. The spawned isolate will be able to use flutter
-  /// plugins. T can be any type that can be normally be passed through to
+  /// plugins. [T] can be any type that can be normally be passed through to
   /// regular isolate's entry point.
   static Future spawn<T>(void entryPoint(T message), T message) async {
     final userEntryPointId =
@@ -56,7 +62,7 @@ class FlutterIsolate {
 
   /// Requests the isolate to pause. This uses the underlying isolates pause
   /// implementation to pause the isolate from with the pausing isolate
-  /// otherwises uses a SendPort to pass through a pause requres to the target
+  /// otherwise uses a SendPort to pass through a pause requires to the target
   void pause() => _isCurrentIsolate
       ? Isolate.current.pause()
       : Isolate(controlPort,
@@ -75,7 +81,7 @@ class FlutterIsolate {
               terminateCapability: terminateCapability)
           .resume(pauseCapability);
 
-  /// Requestes to terminate the flutter isolate. As the isolate that is
+  /// Requests to terminate the flutter isolate. As the isolate that is
   /// created is backed by a FlutterBackgroundView/FlutterEngine for the
   /// platform implementations, the event loop will continue to execute
   /// even after user code has completed. Thus they must be explicitly
@@ -97,12 +103,16 @@ class FlutterIsolate {
       this.terminateCapability]);
 
   static get current => _current != null ? _current : FlutterIsolate._();
-  static void _isolateInitialize() {
-    window.onPlatformMessage = BinaryMessages.handlePlatformMessage;
+
+  void _isolateInitialize() {
+    window.onPlatformMessage =
+        ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage;
 
     StreamSubscription eventSubscription;
+
     eventSubscription = _event.receiveBroadcastStream().listen((isolateId) {
       _current = FlutterIsolate._(isolateId, null, null);
+
       final sendPort = IsolateNameServer.lookupPortByName(_current._isolateId);
       final setupReceivePort = ReceivePort();
       IsolateNameServer.removePortNameMapping(_current._isolateId);
@@ -129,4 +139,13 @@ class FlutterIsolate {
   }
 }
 
-void _flutterIsolateEntryPoint() => FlutterIsolate._isolateInitialize();
+void _flutterIsolateEntryPoint() {
+  /// DO NOT REMOVE
+  _InitClass._();
+  FlutterIsolate.current._isolateInitialize();
+}
+
+class _InitClass extends BindingBase with ServicesBinding {
+  /// Needed to permit [defaultBinaryMessenger] binding to be created
+  _InitClass._();
+}

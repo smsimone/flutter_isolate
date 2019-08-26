@@ -1,27 +1,34 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:flutter_startup/flutter_startup.dart';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_isolate/flutter_isolate.dart';
 
 void isolate2(String arg) {
+  /*
   FlutterStartup.startupReason.then((reason) {
     print("Isolate2 $reason");
   });
+  */
   Timer.periodic(
       Duration(seconds: 1), (timer) => print("Timer Running From Isolate 2"));
 }
 
 void isolate1(String arg) async {
   final isolate = await FlutterIsolate.spawn(isolate2, "hello2");
-
+  /*
   FlutterStartup.startupReason.then((reason) {
     print("Isolate1 $reason");
   });
+  */
+
   Timer.periodic(
       Duration(seconds: 1), (timer) => print("Timer Running From Isolate 1"));
 }
 
 void main() async {
+  /// Needed if you want to schedule the isolates before runApp() method
+  WidgetsFlutterBinding.ensureInitialized();
+
   final isolate = await FlutterIsolate.spawn(isolate1, "hello");
   Timer(Duration(seconds: 5), () {
     print("Pausing Isolate 1");
@@ -35,8 +42,12 @@ void main() async {
     print("Killing Isolate 1");
     isolate.kill();
   });
-
   runApp(MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
@@ -52,11 +63,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> initPlatformState() async {
     String platformVersion;
     // Platform messages may fail, so we use a try/catch PlatformException.
-    try {
-      platformVersion = await FlutterIsolate.platformVersion;
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
+    platformVersion = FlutterIsolate.platformVersion;
 
     // If the widget was removed from the tree while the asynchronous platform
     // message was in flight, we want to discard the reply rather than calling
