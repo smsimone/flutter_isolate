@@ -30,18 +30,22 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final isolate = await FlutterIsolate.spawn(isolate1, "hello");
+
   Timer(Duration(seconds: 5), () {
     print("Pausing Isolate 1");
     isolate.pause();
   });
+  
   Timer(Duration(seconds: 10), () {
     print("Resuming Isolate 1");
     isolate.resume();
   });
+  
   Timer(Duration(seconds: 20), () {
     print("Killing Isolate 1");
     isolate.kill();
   });
+
   runApp(MyApp());
 }
 
